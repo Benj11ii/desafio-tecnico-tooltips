@@ -1,0 +1,80 @@
+FAIL ./bug-produccion.spec.ts
+  Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC)
+    ✕ Caso 1 — Licencia médica TT-2026-00471 (desfase de días dentro del mismo mes) (51 ms)
+    ✕ Caso 2 — Feriado legal de septiembre (inicio de mes retrocede a agosto) (3 ms)
+    ✕ Caso 3 — Permiso de un día, 1 de enero (retrocede al año anterior) (3 ms)
+
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 1 — Licencia médica TT-2026-00471 (desfase de días dentro del mismo mes)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 12,
+    -   "etiqueta": "del 17 al 28 de agosto",
+    +   "etiqueta": "del 16 al 27 de agosto",
+      }
+
+       5 |     expect(
+       6 |       rangoDeDias('2026-08-17T00:00:00.000Z', '2026-08-28T00:00:00.000Z'),
+    >  7 |     ).toEqual({
+         |       ^
+       8 |       etiqueta: 'del 17 al 28 de agosto',
+       9 |       dias: 12,
+      10 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:7:7)
+
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 2 — Feriado legal de septiembre (inicio de mes retrocede a agosto)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 15,
+    -   "etiqueta": "del 1 al 15 de septiembre",
+    +   "etiqueta": "del 31 de agosto al 14 de septiembre",
+      }
+
+      14 |     expect(
+      15 |       rangoDeDias('2026-09-01T00:00:00.000Z', '2026-09-15T00:00:00.000Z'),
+    > 16 |     ).toEqual({
+         |       ^
+      17 |       etiqueta: 'del 1 al 15 de septiembre',
+      18 |       dias: 15,
+      19 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:16:7)
+
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 3 — Permiso de un día, 1 de enero (retrocede al año anterior)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 1,
+    -   "etiqueta": "el 1 de enero",
+    +   "etiqueta": "el 31 de diciembre",
+      }
+
+      23 |     expect(
+      24 |       rangoDeDias('2027-01-01T00:00:00.000Z', '2027-01-01T00:00:00.000Z'),
+    > 25 |     ).toEqual({
+         |       ^
+      26 |       etiqueta: 'el 1 de enero',
+      27 |       dias: 1,
+      28 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:25:7)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 total
+Snapshots:   0 total
+Time:        2.64 s
+Ran all test suites matching bug-produccion.
