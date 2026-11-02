@@ -1,9 +1,7 @@
-# Resolución Challenge Técnico: CH-DEV-SS-05
-
 ## Desarrollador Backend y Automatización — Tooltips SpA
 
-**Postulante:** Benjamín Alonso Carmona Vega
-**Fecha:** Noviembre 2026
+**Postulante:** Benjamín Alonso Carmona Vega  
+**Fecha:** Noviembre 2026  
 **Repositorio:** Solución a bug en producción de formateo de tramos de días (`rangoDeDias`)
 
 ---
@@ -16,9 +14,14 @@ Siguiendo el criterio de ingeniería de considerar el código ejecutable como la
 
 ---
 
-## Declaración de uso de herramientas
+## Declaración de uso de herramientas y asistencia de IA
 
-Conforme a las reglas del desafío (*«puedes usar la documentación y las herramientas que quieras, incluida IA; si la usas, dilo en el documento de entrega»*), se utilizaron herramientas de IA generativa como asistentes de consulta y copiloto para el diseño de experimentos de mutación de código y el contraste conceptual de zonas horarias. Todo el código, análisis, ejecución y validación fue realizado y verificado manualmente en entorno Linux local.
+Conforme a las reglas del desafío (*«puedes usar la documentación y las herramientas que quieras, incluida IA; si la usas, dilo en el documento de entrega»*), se declara el uso transparente de modelos de inteligencia artificial como aceleradores de desarrollo y copilotos de análisis técnico:
+
+* **Google AI Studio (con capacidad de razonamiento avanzado / High Reasoning):** Utilizado para el planteamiento, contraste de hipótesis de fallo y diseño de experimentos de mutación de código (*Mutation Testing*), así como para la revisión conceptual del desfase entre zonas horarias (`America/Santiago` vs UTC).
+* **Anthropic Claude (Claude Sonnet / razonamiento intermedio):** Utilizado en la aceleración de la redacción de scripts de prueba, estructuración de aserciones completas y validación de sintaxis en TypeScript / Jest.
+
+> **Criterio y autoría:** Toda la ejecución de comandos en entorno Linux (Bazzite), la inspección de salidas de Jest, la toma de decisiones arquitectónicas y la verificación manual contra los casos de producción de MongoDB fueron conducidas, ejecutadas y validadas directamente por mí.
 
 ---
 
