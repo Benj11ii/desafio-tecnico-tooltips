@@ -437,3 +437,1267 @@ En carpeta evidencia, se corre jest solo contra este archivo, guardando salida.
 
 mkdir -p evidencia
 npx jest bug-produccion 2>&1 | tee evidencia/salida-antes.txt
+-
+
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ mkdir -p evidencia
+npx jest bug-produccion 2>&1 | tee evidencia/salida-antes.txt
+FAIL ./bug-produccion.spec.ts
+  Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC)
+    ✕ Caso 1 — Licencia médica TT-2026-00471 (desfase de días dentro del mismo mes) (51 ms)
+    ✕ Caso 2 — Feriado legal de septiembre (inicio de mes retrocede a agosto) (3 ms)
+    ✕ Caso 3 — Permiso de un día, 1 de enero (retrocede al año anterior) (3 ms)
+
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 1 — Licencia médica TT-2026-00471 (desfase de días dentro del mismo mes)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 12,
+    -   "etiqueta": "del 17 al 28 de agosto",
+    +   "etiqueta": "del 16 al 27 de agosto",
+      }
+
+       5 |     expect(
+       6 |       rangoDeDias('2026-08-17T00:00:00.000Z', '2026-08-28T00:00:00.000Z'),
+    >  7 |     ).toEqual({
+         |       ^
+       8 |       etiqueta: 'del 17 al 28 de agosto',
+       9 |       dias: 12,
+      10 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:7:7)
+
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 2 — Feriado legal de septiembre (inicio de mes retrocede a agosto)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 15,
+    -   "etiqueta": "del 1 al 15 de septiembre",
+    +   "etiqueta": "del 31 de agosto al 14 de septiembre",
+      }
+
+      14 |     expect(
+      15 |       rangoDeDias('2026-09-01T00:00:00.000Z', '2026-09-15T00:00:00.000Z'),
+    > 16 |     ).toEqual({
+         |       ^
+      17 |       etiqueta: 'del 1 al 15 de septiembre',
+      18 |       dias: 15,
+      19 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:16:7)
+
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 3 — Permiso de un día, 1 de enero (retrocede al año anterior)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 1,
+    -   "etiqueta": "el 1 de enero",
+    +   "etiqueta": "el 31 de diciembre",
+      }
+
+      23 |     expect(
+      24 |       rangoDeDias('2027-01-01T00:00:00.000Z', '2027-01-01T00:00:00.000Z'),
+    > 25 |     ).toEqual({
+         |       ^
+      26 |       etiqueta: 'el 1 de enero',
+      27 |       dias: 1,
+      28 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:25:7)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 3 total
+Snapshots:   0 total
+Time:        2.64 s
+Ran all test suites matching bug-produccion.
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+
+-
+Se guarda el hito con git
+git add -A
+git commit -m "test: reproducir en rojo los 3 bugs reales de produccion"
+
+
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ git add -A
+git commit -m "test: reproducir en rojo los 3 bugs reales de produccion"
+[main 87f08b2] test: reproducir en rojo los 3 bugs reales de produccion
+ 12 files changed, 5555 insertions(+)
+ create mode 100644 .gitignore
+ create mode 100644 resolucion/.Documentacion para desarrollar desafio tooltips.txt.kate-swp
+ create mode 100644 resolucion/Documentacion para desarrollar desafio tooltips.txt
+ create mode 100644 resolucion/bug-produccion.spec.ts
+ create mode 100644 resolucion/casos-de-produccion.md
+ create mode 100644 resolucion/evidencia/salida-antes.txt
+ create mode 100644 resolucion/jest.config.js
+ create mode 100644 resolucion/package-lock.json
+ create mode 100644 resolucion/package.json
+ create mode 100644 resolucion/rango-de-dias.spec.ts
+ create mode 100644 resolucion/rango-de-dias.ts
+ create mode 100644 resolucion/tsconfig.json
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+
+
+-
+
+Para cumplir con requerimiento punto 2, por qué la suite no atrapa el error, se realiza experimiento 1:
+
+Hipótesis: La suite original de 22 tests pasa sin importar la zona horaria porque el helper f() inyectó artificialmente las 12:00 PM UTC (T12:00:00.000Z). A esa hora, cualquier huso horario da el mismo día.
+
+Vamos a mutar temporalmente rango-de-dias.ts cambiando 'America/Santiago' por 'UTC' en las tres funciones (diaDe, mesDe, anioDe):
+sed -i "s/'America\/Santiago'/'UTC'/g" rango-de-dias.ts
+
+Se corren test
+npx jest
+
+-
+
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ npx jest PASS  ./bug-produccion.spec.ts
+ PASS  ./rango-de-dias.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       25 passed, 25 total
+Snapshots:   0 total
+Time:        3.816 s
+Ran all test suites.
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+
+
+-
+
+Registro respuesta
+
+Los 3 casos de producción se arreglan al usar UTC. Porque MongoDB guarda las fechas de ausencias normalizadas a medianoche UTC (00:00:00.000Z), y al no restarles las 4 horas de Chile, el día no retrocede.
+
+Los 22 tests originales siguieron pasando exactamente igual. A la suite original le daba lo mismo si el código decía 'America/Santiago', 'UTC' o 'Asia/Tokyo'. Debido a que el fixture f() fijó artificialmente las 12:00 del mediodía (T12:00:00.000Z), restar 4 horas o no restar nada daba siempre el mismo día calendario. La suite nunca estuvo probando la zona horaria chilena.
+
+-
+
+Experieminto 2, punto 2
+De acuerdo a que;
+Cuáles pasarían igual con la función devolviendo una constante... Revisa qué hace realmente cada test, no lo que su nombre promete.
+Haré una mutación quirúrgica: ¿qué pasa si la lógica de armado de etiquetas se rompe por completo y devolvemos siempre una constante de etiqueta, pero dejamos intacto el cálculo de días?
+
+En rango-de-dias.ts se inyecta esta mutación:
+Justo antes de los if finales, la función devuelva { etiqueta: 'ETIQUETA_ROTA', dias }.
+
+
+# Inyectar una mutación donde la etiqueta siempre es una constante rota
+sed -i "s/return { etiqueta: \`del \${dA} al \${dB} de \${MESES\[mA\]}\`, dias };/return { etiqueta: 'ETIQUETA_ROTA', dias };/g" rango-de-dias.ts
+sed -i "s/if (dias === 1) {/return { etiqueta: 'del 4 al 9 de mayo', dias }; if (dias === 1) {/g" rango-de-dias.ts
+
+# Ejecutar la suite original
+npx jest rango-de-dias.spec.ts
+
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ # Inyectar una mutación donde la etiqueta siempre es una constante rota
+sed -i "s/return { etiqueta: \`del \${dA} al \${dB} de \${MESES\[mA\]}\`, dias };/return { etiqueta: 'ETIQUETA_ROTA', dias };/g" rango-de-dias.ts
+sed -i "s/if (dias === 1) {/return { etiqueta: 'del 4 al 9 de mayo', dias }; if (dias === 1) {/g" rango-de-dias.ts
+
+# Ejecutar la suite original
+npx jest rango-de-dias.spec.ts
+ FAIL  ./rango-de-dias.spec.ts
+  rangoDeDias
+    un solo día
+      ✕ lo escribe sin «del … al …» (53 ms)
+      ✓ cuenta 1 día (3 ms)
+      ✕ no le pone cero adelante al día (8 ms)
+    dentro del mismo mes
+      ✕ nombra el mes una sola vez (3 ms)
+      ✓ cuenta los dos extremos (2 ms)
+      ✕ sirve para el mes completo (3 ms)
+      ✓ febrero de un año normal tiene 28 (2 ms)
+      ✓ febrero de un año bisiesto tiene 29 (2 ms)
+    cruzando de mes
+      ✕ nombra los dos meses (3 ms)
+      ✓ cuenta bien pasando por un mes de 30 (2 ms)
+      ✓ cuenta bien pasando por febrero (2 ms)
+      ✕ escribe septiembre entero (3 ms)
+    cruzando de año
+      ✕ agrega el año a los dos extremos (3 ms)
+      ✓ cuenta los días del salto de año (2 ms)
+    los doce meses se escriben en minúscula y sin abreviar
+      ✕ 2026-01-10 → el 10 de enero (2 ms)
+      ✕ 2026-04-10 → el 10 de abril (2 ms)
+      ✕ 2026-07-10 → el 10 de julio (2 ms)
+      ✕ 2026-11-10 → el 10 de noviembre (2 ms)
+    entradas inválidas
+      ✓ rechaza una fecha que no se puede leer (5 ms)
+      ✓ rechaza un término anterior al inicio (2 ms)
+    acepta Date o string
+      ✓ da lo mismo pasar un Date (2 ms)
+      ✓ da lo mismo pasar el ISO completo (2 ms)
+
+  ● rangoDeDias › un solo día › lo escribe sin «del … al …»
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 1,
+    -   "etiqueta": "el 17 de agosto",
+    +   "etiqueta": "del 4 al 9 de mayo",
+      }
+
+       8 |   describe('un solo día', () => {
+       9 |     it('lo escribe sin «del … al …»', () => {
+    > 10 |       expect(rangoDeDias(f('2026-08-17'), f('2026-08-17'))).toEqual({
+         |                                                             ^
+      11 |         etiqueta: 'el 17 de agosto',
+      12 |         dias: 1,
+      13 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:10:61)
+
+  ● rangoDeDias › un solo día › no le pone cero adelante al día
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 3 de agosto"
+    Received: "del 4 al 9 de mayo"
+
+      19 |
+      20 |     it('no le pone cero adelante al día', () => {
+    > 21 |       expect(rangoDeDias(f('2026-08-03'), f('2026-08-03')).etiqueta).toBe(
+         |                                                                      ^
+      22 |         'el 3 de agosto',
+      23 |       );
+      24 |     });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:21:70)
+
+  ● rangoDeDias › dentro del mismo mes › nombra el mes una sola vez
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 12,
+    -   "etiqueta": "del 17 al 28 de agosto",
+    +   "etiqueta": "del 4 al 9 de mayo",
+      }
+
+      27 |   describe('dentro del mismo mes', () => {
+      28 |     it('nombra el mes una sola vez', () => {
+    > 29 |       expect(rangoDeDias(f('2026-08-17'), f('2026-08-28'))).toEqual({
+         |                                                             ^
+      30 |         etiqueta: 'del 17 al 28 de agosto',
+      31 |         dias: 12,
+      32 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:29:61)
+
+  ● rangoDeDias › dentro del mismo mes › sirve para el mes completo
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 31,
+    -   "etiqueta": "del 1 al 31 de agosto",
+    +   "etiqueta": "del 4 al 9 de mayo",
+      }
+
+      38 |
+      39 |     it('sirve para el mes completo', () => {
+    > 40 |       expect(rangoDeDias(f('2026-08-01'), f('2026-08-31'))).toEqual({
+         |                                                             ^
+      41 |         etiqueta: 'del 1 al 31 de agosto',
+      42 |         dias: 31,
+      43 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:40:61)
+
+  ● rangoDeDias › cruzando de mes › nombra los dos meses
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 7,
+    -   "etiqueta": "del 28 de agosto al 3 de septiembre",
+    +   "etiqueta": "del 4 al 9 de mayo",
+      }
+
+      55 |   describe('cruzando de mes', () => {
+      56 |     it('nombra los dos meses', () => {
+    > 57 |       expect(rangoDeDias(f('2026-08-28'), f('2026-09-03'))).toEqual({
+         |                                                             ^
+      58 |         etiqueta: 'del 28 de agosto al 3 de septiembre',
+      59 |         dias: 7,
+      60 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:57:61)
+
+  ● rangoDeDias › cruzando de mes › escribe septiembre entero
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "del 30 de septiembre al 1 de octubre"
+    Received: "del 4 al 9 de mayo"
+
+      70 |
+      71 |     it('escribe septiembre entero', () => {
+    > 72 |       expect(rangoDeDias(f('2026-09-30'), f('2026-10-01')).etiqueta).toBe(
+         |                                                                      ^
+      73 |         'del 30 de septiembre al 1 de octubre',
+      74 |       );
+      75 |     });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:72:70)
+
+  ● rangoDeDias › cruzando de año › agrega el año a los dos extremos
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 9,
+    -   "etiqueta": "del 28 de diciembre de 2026 al 5 de enero de 2027",
+    +   "etiqueta": "del 4 al 9 de mayo",
+      }
+
+      78 |   describe('cruzando de año', () => {
+      79 |     it('agrega el año a los dos extremos', () => {
+    > 80 |       expect(rangoDeDias(f('2026-12-28'), f('2027-01-05'))).toEqual({
+         |                                                             ^
+      81 |         etiqueta: 'del 28 de diciembre de 2026 al 5 de enero de 2027',
+      82 |         dias: 9,
+      83 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:80:61)
+
+  ● rangoDeDias › los doce meses se escriben en minúscula y sin abreviar › 2026-01-10 → el 10 de enero
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 10 de enero"
+    Received: "del 4 al 9 de mayo"
+
+       96 |       ['2026-11-10', 'el 10 de noviembre'],
+       97 |     ])('%s → %s', (iso, esperado) => {
+    >  98 |       expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+          |                                                    ^
+       99 |     });
+      100 |   });
+      101 |
+
+      at rango-de-dias.spec.ts:98:52
+
+  ● rangoDeDias › los doce meses se escriben en minúscula y sin abreviar › 2026-04-10 → el 10 de abril
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 10 de abril"
+    Received: "del 4 al 9 de mayo"
+
+       96 |       ['2026-11-10', 'el 10 de noviembre'],
+       97 |     ])('%s → %s', (iso, esperado) => {
+    >  98 |       expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+          |                                                    ^
+       99 |     });
+      100 |   });
+      101 |
+
+      at rango-de-dias.spec.ts:98:52
+
+  ● rangoDeDias › los doce meses se escriben en minúscula y sin abreviar › 2026-07-10 → el 10 de julio
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 10 de julio"
+    Received: "del 4 al 9 de mayo"
+
+       96 |       ['2026-11-10', 'el 10 de noviembre'],
+       97 |     ])('%s → %s', (iso, esperado) => {
+    >  98 |       expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+          |                                                    ^
+       99 |     });
+      100 |   });
+      101 |
+
+      at rango-de-dias.spec.ts:98:52
+
+  ● rangoDeDias › los doce meses se escriben en minúscula y sin abreviar › 2026-11-10 → el 10 de noviembre
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 10 de noviembre"
+    Received: "del 4 al 9 de mayo"
+
+       96 |       ['2026-11-10', 'el 10 de noviembre'],
+       97 |     ])('%s → %s', (iso, esperado) => {
+    >  98 |       expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+          |                                                    ^
+       99 |     });
+      100 |   });
+      101 |
+
+      at rango-de-dias.spec.ts:98:52
+
+Test Suites: 1 failed, 1 total
+Tests:       11 failed, 11 passed, 22 total
+Snapshots:   0 total
+Time:        2.9 s, estimated 3 s
+Ran all test suites matching rango-de-dias.spec.ts.
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+
+-
+
+11 tests pasaron en verde con la función devolviendo una constante fija ('del 4 al 9 de mayo') y con toda la lógica de etiquetas destruida:
+
+    7 tests (cuenta 1 día, dos extremos, febrero 28, febrero 29, mes de 30, febrero cruzado, salto de año) pasaron porque jamás revisaron la etiqueta: solo afirmaban .dias.
+
+    2 tests (da lo mismo pasar un Date y da lo mismo pasar el ISO completo) pasaron porque esperaban exactamente la constante ('del 4 al 9 de mayo'). Pasaron por pura casualidad, sin validar la propiedad .dias.
+
+    2 tests (rechaza fecha no legible y rechaza término anterior) pasaron porque son validaciones de error que ocurren antes de armar la etiqueta.
+
+Se restaura el archivo a su estado original
+
+git restore rango-de-dias.ts
+npx jest
+
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ git restore rango-de-dias.ts
+npx jest
+ FAIL  ./bug-produccion.spec.ts
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 1 — Licencia médica TT-2026-00471 (desfase de días dentro del mismo mes)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 12,
+    -   "etiqueta": "del 17 al 28 de agosto",
+    +   "etiqueta": "del 16 al 27 de agosto",
+      }
+
+       5 |     expect(
+       6 |       rangoDeDias('2026-08-17T00:00:00.000Z', '2026-08-28T00:00:00.000Z'),
+    >  7 |     ).toEqual({
+         |       ^
+       8 |       etiqueta: 'del 17 al 28 de agosto',
+       9 |       dias: 12,
+      10 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:7:7)
+
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 2 — Feriado legal de septiembre (inicio de mes retrocede a agosto)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 15,
+    -   "etiqueta": "del 1 al 15 de septiembre",
+    +   "etiqueta": "del 31 de agosto al 14 de septiembre",
+      }
+
+      14 |     expect(
+      15 |       rangoDeDias('2026-09-01T00:00:00.000Z', '2026-09-15T00:00:00.000Z'),
+    > 16 |     ).toEqual({
+         |       ^
+      17 |       etiqueta: 'del 1 al 15 de septiembre',
+      18 |       dias: 15,
+      19 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:16:7)
+
+  ● Reproducción de bugs reales en producción (casos de MongoDB a medianoche UTC) › Caso 3 — Permiso de un día, 1 de enero (retrocede al año anterior)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 1,
+    -   "etiqueta": "el 1 de enero",
+    +   "etiqueta": "el 31 de diciembre",
+      }
+
+      23 |     expect(
+      24 |       rangoDeDias('2027-01-01T00:00:00.000Z', '2027-01-01T00:00:00.000Z'),
+    > 25 |     ).toEqual({
+         |       ^
+      26 |       etiqueta: 'el 1 de enero',
+      27 |       dias: 1,
+      28 |     });
+
+      at Object.<anonymous> (bug-produccion.spec.ts:25:7)
+
+ PASS  ./rango-de-dias.spec.ts
+
+Test Suites: 1 failed, 1 passed, 2 total
+Tests:       3 failed, 22 passed, 25 total
+Snapshots:   0 total
+Time:        3.908 s
+Ran all test suites.
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+-
+
+
+#	Test en la suite original	Clasificación	Justificación empírica
+1	un solo día > lo escribe sin «del … al …»	Pasa por la razón equivocada	Pasa solo por el sesgo de f() a las 12:00Z; con medianoche UTC retrocede al día anterior.
+2	un solo día > cuenta 1 día	Pasa con una constante / Aserción ciega	Solo evalúa .dias.toBe(1); pasó intacto en el experimento con la etiqueta rota.
+3	un solo día > no le pone cero adelante al día	Pasa por la razón equivocada	Valida formato pero sesgado por las 12:00Z; a medianoche UTC habría evaluado el 2 de agosto.
+4	mismo mes > nombra el mes una sola vez	Pasa por la razón equivocada	Es el Caso 1 de producción; el sesgo de las 12:00Z impidió que la suite detectara el desfase de días.
+5	mismo mes > cuenta los dos extremos	Pasa con una constante / Aserción ciega	Solo evalúa .dias.toBe(2); pasó intacto en el experimento con la etiqueta rota.
+6	mismo mes > sirve para el mes completo	Pasa por la razón equivocada	Con datos reales de medianoche falla retrocediendo al mes anterior (de agosto a julio).
+7	mismo mes > febrero normal tiene 28	Pasa con una constante / Aserción ciega	No valida la etiqueta de negocio; solo prueba la resta de milisegundos de JavaScript.
+8	mismo mes > febrero bisiesto tiene 29	Pasa con una constante / Aserción ciega	Pasó intacto con la función rota; prueba el calendario gregoriano pero ignora la salida.
+9	cruzando mes > nombra los dos meses	Pasa por la razón equivocada	Oculta el bug del Caso 2 que en producción mostró agosto en un tramo de septiembre.
+10	cruzando mes > cuenta bien mes de 30	Pasa con una constante / Aserción ciega	Solo evalúa .dias.toBe(11); ignoró completamente que la etiqueta estaba adulterada.
+11	cruzando mes > cuenta bien pasando por febrero	Pasa con una constante / Aserción ciega	Solo evalúa .dias.toBe(6); pasó con éxito cuando devolvimos una constante.
+12	cruzando mes > escribe septiembre entero	Pasa por la razón equivocada	Valida la ortografía de septiembre, pero enmascarado por la hora de mediodía de f().
+13	cruzando año > agrega el año a los dos extremos	Pasa por la razón equivocada	Oculta el bug del Caso 3 donde el 1 de enero retrocedió a diciembre del año anterior.
+14	cruzando año > cuenta días del salto de año	Pasa con una constante / Aserción ciega	Solo evalúa .dias.toBe(2); no valida si los años en la etiqueta son consistentes.
+15	meses en minúscula > 2026-01-10	Protege algo de verdad	Verifica que el mes 0 mapee a «enero» en minúscula sin abreviaciones.
+16	meses en minúscula > 2026-04-10	Protege algo de verdad	Verifica que el mes 3 mapee a «abril» en minúscula sin abreviaciones.
+17	meses en minúscula > 2026-07-10	Protege algo de verdad	Verifica que el mes 6 mapee a «julio» en minúscula sin abreviaciones.
+18	meses en minúscula > 2026-11-10	Protege algo de verdad	Verifica que el mes 10 mapee a «noviembre» en minúscula sin abreviaciones.
+19	entradas inválidas > rechaza fecha ilegible	Protege algo de verdad	Protege el contrato defensivo lanzando excepción ante fechas NaN.
+20	entradas inválidas > rechaza término anterior	Protege algo de verdad	Protege la regla de dominio evitando duraciones negativas o rangos invertidos.
+21	acepta Date o string > da lo mismo Date	Pasa con una constante / Incompleto	Pasó con la constante 'del 4 al 9 de mayo'; no valida la propiedad .dias.
+22	acepta Date o string > da lo mismo ISO completo	Pasa por la razón equivocada / Constante	Usa 12:00:00Z en el string replicando el sesgo del helper y solo evalúa la etiqueta.
+
+-
+
+Para el punto 4
+Arregla la función, con el test del punto 1 pasando y sin romper lo que sí estaba bien. No cambies la firma de la función.
+
+El arreglo mínimo, limpio y de máximo rendimiento es extraer los componentes de la fecha usando los métodos nativos de UTC (getUTCDate(), getUTCMonth(), getUTCFullYear()), alineando la etiqueta con el cálculo de días y con el estándar de almacenamiento de MongoDB.
+
+Se reemplaza contenido del archivo rango-de-dias.ts con comando
+cat > rango-de-dias.ts <<'EOF'
+/**
+ * Arma la etiqueta con que se muestra un tramo de días en el CRM.
+ *
+ * Lo usan la ficha de licencias médicas, el listado de ausencias, el
+ * calendario del dashboard y el resumen que sale impreso en la liquidación.
+ *
+ *   rangoDeDias('2026-08-17', '2026-08-28')
+ *   → { etiqueta: 'del 17 al 28 de agosto', dias: 12 }
+ */
+
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+const UN_DIA = 24 * 60 * 60 * 1000;
+
+export interface RangoDeDias {
+  /** «del 17 al 28 de agosto», o «el 17 de agosto» si es un solo día. */
+  etiqueta: string;
+  /** Días corridos, ambos extremos incluidos. */
+  dias: number;
+}
+
+/** El día del mes de la fecha calendario (UTC). */
+function diaDe(f: Date): number {
+  return f.getUTCDate();
+}
+
+/** El mes (0-11) de la fecha calendario (UTC). */
+function mesDe(f: Date): number {
+  return f.getUTCMonth();
+}
+
+/** El año de la fecha calendario (UTC). */
+function anioDe(f: Date): number {
+  return f.getUTCFullYear();
+}
+
+export function rangoDeDias(desde: string | Date, hasta: string | Date): RangoDeDias {
+  const a = desde instanceof Date ? desde : new Date(desde);
+  const b = hasta instanceof Date ? hasta : new Date(hasta);
+
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {
+    throw new Error('Fecha inválida');
+  }
+  if (b.getTime() < a.getTime()) {
+    throw new Error('El término no puede ser anterior al inicio');
+  }
+
+  // Los días corridos se cuentan sobre el instante, sin pasar por la zona:
+  // dos fechas de calendario consecutivas siempre difieren en 24 h exactas.
+  const dias = Math.round((b.getTime() - a.getTime()) / UN_DIA) + 1;
+
+  const dA = diaDe(a);
+  const dB = diaDe(b);
+  const mA = mesDe(a);
+  const mB = mesDe(b);
+  const yA = anioDe(a);
+  const yB = anioDe(b);
+
+  if (dias === 1) {
+    return { etiqueta: `el ${dA} de ${MESES[mA]}`, dias };
+  }
+
+  if (yA !== yB) {
+    return {
+      etiqueta: `del ${dA} de ${MESES[mA]} de ${yA} al ${dB} de ${MESES[mB]} de ${yB}`,
+      dias,
+    };
+  }
+
+  if (mA !== mB) {
+    return {
+      etiqueta: `del ${dA} de ${MESES[mA]} al ${dB} de ${MESES[mB]}`,
+      dias,
+    };
+  }
+
+  return { etiqueta: `del ${dA} al ${dB} de ${MESES[mA]}`, dias };
+}
+EOF
+
+
+Se corren test con npx jest
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ npx jest
+ PASS  ./bug-produccion.spec.ts
+ PASS  ./rango-de-dias.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       25 passed, 25 total
+Snapshots:   0 total
+Time:        3.771 s
+Ran all test suites.
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+
+Se guarda con git
+
+git add rango-de-dias.ts
+git commit -m "fix: alinear extraccion de fecha calendario a UTC para evitar desfase de zona horaria"
+
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ git add rango-de-dias.ts
+git commit -m "fix: alinear extraccion de fecha calendario a UTC para evitar desfase de zona horaria"
+[main 4b19534] fix: alinear extraccion de fecha calendario a UTC para evitar desfase de zona horaria
+ 1 file changed, 6 insertions(+), 23 deletions(-)
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+
+Punto 5
+
+Arregla la suite. No se trata de agregar veinte tests más: se trata de que la que quede detecte esta clase de error. Explica el criterio con el que elegiste qué agregar y qué borrar. Borrar un test malo también cuenta.
+
+
+Qué eliminar / corregir:
+
+    Eliminé el helper f() a las 12:00Z: Ese era el "virus" que enmascaraba el bug. Las fechas ahora se pasan como cadenas ISO estándar ('2026-08-17') o como objetos Date a medianoche UTC (new Date('2026-08-17T00:00:00.000Z')), que es como viajan en producción.
+
+    Sanee las aserciones ciegas: Los tests que solo evaluaban .dias ahora verifican el objeto completo { etiqueta, dias }.
+
+    Podé redundancias: Eliminé los tests que solo probaban aritmética interna de JavaScript sin tocar la lógica de negocio.
+
+Qué agregué:
+
+    Los 3 casos reales de producción quedan incorporados de forma definitiva como bloque de regresión (Casos de producción (regresión)).
+
+    Cobertura explícita de entradas polimórficas reales: tanto string ('YYYY-MM-DD') como objetos Date.
+
+
+Se ejecuta en terminal para actualizar a suite definitiva con comando
+
+cat > rango-de-dias.spec.ts <<'EOF'
+import { rangoDeDias } from './rango-de-dias';
+
+// Helper limpio: fechas calendario a medianoche UTC (como almacena Mongo y viaja en APIs)
+const f = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+
+describe('rangoDeDias — Suite Corregida y Blindada', () => {
+  describe('Casos reales de producción (regresión)', () => {
+    it('Caso 1 — Licencia médica TT-2026-00471 (medianoche UTC en Mongo)', () => {
+      expect(
+        rangoDeDias(
+          new Date('2026-08-17T00:00:00.000Z'),
+          new Date('2026-08-28T00:00:00.000Z'),
+        ),
+      ).toEqual({
+        etiqueta: 'del 17 al 28 de agosto',
+        dias: 12,
+      });
+    });
+
+    it('Caso 2 — Feriado legal de septiembre (inicio de mes no debe retroceder)', () => {
+      expect(
+        rangoDeDias('2026-09-01T00:00:00.000Z', '2026-09-15T00:00:00.000Z'),
+      ).toEqual({
+        etiqueta: 'del 1 al 15 de septiembre',
+        dias: 15,
+      });
+    });
+
+    it('Caso 3 — Permiso de un día en año nuevo (no debe retroceder de año)', () => {
+      expect(
+        rangoDeDias(
+          new Date('2027-01-01T00:00:00.000Z'),
+          new Date('2027-01-01T00:00:00.000Z'),
+        ),
+      ).toEqual({
+        etiqueta: 'el 1 de enero',
+        dias: 1,
+      });
+    });
+  });
+
+  describe('Formateo de tramos y etiquetas', () => {
+    it('un solo día dentro del mes', () => {
+      expect(rangoDeDias(f('2026-08-17'), f('2026-08-17'))).toEqual({
+        etiqueta: 'el 17 de agosto',
+        dias: 1,
+      });
+    });
+
+    it('día único sin cero a la izquierda', () => {
+      expect(rangoDeDias(f('2026-08-03'), f('2026-08-03'))).toEqual({
+        etiqueta: 'el 3 de agosto',
+        dias: 1,
+      });
+    });
+
+    it('dentro del mismo mes nombra el mes una sola vez', () => {
+      expect(rangoDeDias(f('2026-08-17'), f('2026-08-28'))).toEqual({
+        etiqueta: 'del 17 al 28 de agosto',
+        dias: 12,
+      });
+    });
+
+    it('mes completo (del primer al último día)', () => {
+      expect(rangoDeDias(f('2026-08-01'), f('2026-08-31'))).toEqual({
+        etiqueta: 'del 1 al 31 de agosto',
+        dias: 31,
+      });
+    });
+
+    it('cruzando de mes nombra ambos meses', () => {
+      expect(rangoDeDias(f('2026-08-28'), f('2026-09-03'))).toEqual({
+        etiqueta: 'del 28 de agosto al 3 de septiembre',
+        dias: 7,
+      });
+    });
+
+    it('cruzando de año explicita el año en ambos extremos', () => {
+      expect(rangoDeDias(f('2026-12-28'), f('2027-01-05'))).toEqual({
+        etiqueta: 'del 28 de diciembre de 2026 al 5 de enero de 2027',
+        dias: 9,
+      });
+    });
+  });
+
+  describe('Nombres de meses en español', () => {
+    it.each([
+      ['2026-01-10', 'el 10 de enero'],
+      ['2026-04-10', 'el 10 de abril'],
+      ['2026-07-10', 'el 10 de julio'],
+      ['2026-11-10', 'el 10 de noviembre'],
+    ])('%s → %s', (iso, esperado) => {
+      expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+    });
+  });
+
+  describe('Flexibilidad de tipos (contrato Date | string)', () => {
+    it('acepta objetos Date nativos', () => {
+      expect(
+        rangoDeDias(
+          new Date('2026-05-04T00:00:00.000Z'),
+          new Date('2026-05-09T00:00:00.000Z'),
+        ),
+      ).toEqual({
+        etiqueta: 'del 4 al 9 de mayo',
+        dias: 6,
+      });
+    });
+
+    it('acepta cadenas ISO completas', () => {
+      expect(
+        rangoDeDias('2026-05-04T00:00:00.000Z', '2026-05-09T00:00:00.000Z'),
+      ).toEqual({
+        etiqueta: 'del 4 al 9 de mayo',
+        dias: 6,
+      });
+    });
+
+    it('acepta fechas cortas YYYY-MM-DD sin hora', () => {
+      expect(rangoDeDias('2026-05-04', '2026-05-09')).toEqual({
+        etiqueta: 'del 4 al 9 de mayo',
+        dias: 6,
+      });
+    });
+  });
+
+  describe('Validaciones y errores defensivos', () => {
+    it('rechaza una fecha inválida lanzando excepción', () => {
+      expect(() => rangoDeDias(new Date('invalida'), f('2026-08-01'))).toThrow(
+        'Fecha inválida',
+      );
+    });
+
+    it('rechaza un término anterior al inicio', () => {
+      expect(() => rangoDeDias(f('2026-08-10'), f('2026-08-01'))).toThrow(
+        'El término no puede ser anterior al inicio',
+      );
+    });
+  });
+});
+EOF
+
+Ahora para probar que esta nueva suite funciona, se vuelve a introducir el error con comando sed dedicado
+
+
+sed -i "s/return f.getUTCDate();/return Number(f.toLocaleDateString('es-CL', { timeZone: 'America\/Santiago', day: 'numeric' }));/g" rango-de-dias.ts
+sed -i "s/return f.getUTCMonth();/return Number(f.toLocaleDateString('es-CL', { timeZone: 'America\/Santiago', month: 'numeric' })) - 1;/g" rango-de-dias.ts
+sed -i "s/return f.getUTCFullYear();/return Number(f.toLocaleDateString('es-CL', { timeZone: 'America\/Santiago', year: 'numeric' }));/g" rango-de-dias.ts
+
+Se corre test para probar sistema
+
+npx jest rango-de-dias.spec.ts 2>&1 | tee evidencia/salida-bug-reintroducido.txt
+
+resultado
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ npx jest rango-de-dias.spec.ts 2>&1 | tee evidencia/salida-bug-reintroducido.txt
+FAIL ./rango-de-dias.spec.ts
+  rangoDeDias — Suite Corregida y Blindada
+    Casos reales de producción (regresión)
+      ✕ Caso 1 — Licencia médica TT-2026-00471 (medianoche UTC en Mongo) (52 ms)
+      ✕ Caso 2 — Feriado legal de septiembre (inicio de mes no debe retroceder) (4 ms)
+      ✕ Caso 3 — Permiso de un día en año nuevo (no debe retroceder de año) (3 ms)
+    Formateo de tramos y etiquetas
+      ✕ un solo día dentro del mes (3 ms)
+      ✕ día único sin cero a la izquierda (3 ms)
+      ✕ dentro del mismo mes nombra el mes una sola vez (3 ms)
+      ✕ mes completo (del primer al último día) (3 ms)
+      ✕ cruzando de mes nombra ambos meses (2 ms)
+      ✕ cruzando de año explicita el año en ambos extremos (3 ms)
+    Nombres de meses en español
+      ✕ 2026-01-10 → el 10 de enero (5 ms)
+      ✕ 2026-04-10 → el 10 de abril (2 ms)
+      ✕ 2026-07-10 → el 10 de julio (2 ms)
+      ✕ 2026-11-10 → el 10 de noviembre (2 ms)
+    Flexibilidad de tipos (contrato Date | string)
+      ✕ acepta objetos Date nativos (2 ms)
+      ✕ acepta cadenas ISO completas (2 ms)
+      ✕ acepta fechas cortas YYYY-MM-DD sin hora (2 ms)
+    Validaciones y errores defensivos
+      ✓ rechaza una fecha inválida lanzando excepción (3 ms)
+      ✓ rechaza un término anterior al inicio (1 ms)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Casos reales de producción (regresión) › Caso 1 — Licencia médica TT-2026-00471 (medianoche UTC en Mongo)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 12,
+    -   "etiqueta": "del 17 al 28 de agosto",
+    +   "etiqueta": "del 16 al 27 de agosto",
+      }
+
+      12 |           new Date('2026-08-28T00:00:00.000Z'),
+      13 |         ),
+    > 14 |       ).toEqual({
+         |         ^
+      15 |         etiqueta: 'del 17 al 28 de agosto',
+      16 |         dias: 12,
+      17 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:14:9)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Casos reales de producción (regresión) › Caso 2 — Feriado legal de septiembre (inicio de mes no debe retroceder)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 15,
+    -   "etiqueta": "del 1 al 15 de septiembre",
+    +   "etiqueta": "del 31 de agosto al 14 de septiembre",
+      }
+
+      21 |       expect(
+      22 |         rangoDeDias('2026-09-01T00:00:00.000Z', '2026-09-15T00:00:00.000Z'),
+    > 23 |       ).toEqual({
+         |         ^
+      24 |         etiqueta: 'del 1 al 15 de septiembre',
+      25 |         dias: 15,
+      26 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:23:9)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Casos reales de producción (regresión) › Caso 3 — Permiso de un día en año nuevo (no debe retroceder de año)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 1,
+    -   "etiqueta": "el 1 de enero",
+    +   "etiqueta": "el 31 de diciembre",
+      }
+
+      33 |           new Date('2027-01-01T00:00:00.000Z'),
+      34 |         ),
+    > 35 |       ).toEqual({
+         |         ^
+      36 |         etiqueta: 'el 1 de enero',
+      37 |         dias: 1,
+      38 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:35:9)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Formateo de tramos y etiquetas › un solo día dentro del mes
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 1,
+    -   "etiqueta": "el 17 de agosto",
+    +   "etiqueta": "el 16 de agosto",
+      }
+
+      42 |   describe('Formateo de tramos y etiquetas', () => {
+      43 |     it('un solo día dentro del mes', () => {
+    > 44 |       expect(rangoDeDias(f('2026-08-17'), f('2026-08-17'))).toEqual({
+         |                                                             ^
+      45 |         etiqueta: 'el 17 de agosto',
+      46 |         dias: 1,
+      47 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:44:61)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Formateo de tramos y etiquetas › día único sin cero a la izquierda
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 1,
+    -   "etiqueta": "el 3 de agosto",
+    +   "etiqueta": "el 2 de agosto",
+      }
+
+      49 |
+      50 |     it('día único sin cero a la izquierda', () => {
+    > 51 |       expect(rangoDeDias(f('2026-08-03'), f('2026-08-03'))).toEqual({
+         |                                                             ^
+      52 |         etiqueta: 'el 3 de agosto',
+      53 |         dias: 1,
+      54 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:51:61)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Formateo de tramos y etiquetas › dentro del mismo mes nombra el mes una sola vez
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 12,
+    -   "etiqueta": "del 17 al 28 de agosto",
+    +   "etiqueta": "del 16 al 27 de agosto",
+      }
+
+      56 |
+      57 |     it('dentro del mismo mes nombra el mes una sola vez', () => {
+    > 58 |       expect(rangoDeDias(f('2026-08-17'), f('2026-08-28'))).toEqual({
+         |                                                             ^
+      59 |         etiqueta: 'del 17 al 28 de agosto',
+      60 |         dias: 12,
+      61 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:58:61)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Formateo de tramos y etiquetas › mes completo (del primer al último día)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 31,
+    -   "etiqueta": "del 1 al 31 de agosto",
+    +   "etiqueta": "del 31 de julio al 30 de agosto",
+      }
+
+      63 |
+      64 |     it('mes completo (del primer al último día)', () => {
+    > 65 |       expect(rangoDeDias(f('2026-08-01'), f('2026-08-31'))).toEqual({
+         |                                                             ^
+      66 |         etiqueta: 'del 1 al 31 de agosto',
+      67 |         dias: 31,
+      68 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:65:61)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Formateo de tramos y etiquetas › cruzando de mes nombra ambos meses
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 7,
+    -   "etiqueta": "del 28 de agosto al 3 de septiembre",
+    +   "etiqueta": "del 27 de agosto al 2 de septiembre",
+      }
+
+      70 |
+      71 |     it('cruzando de mes nombra ambos meses', () => {
+    > 72 |       expect(rangoDeDias(f('2026-08-28'), f('2026-09-03'))).toEqual({
+         |                                                             ^
+      73 |         etiqueta: 'del 28 de agosto al 3 de septiembre',
+      74 |         dias: 7,
+      75 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:72:61)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Formateo de tramos y etiquetas › cruzando de año explicita el año en ambos extremos
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 9,
+    -   "etiqueta": "del 28 de diciembre de 2026 al 5 de enero de 2027",
+    +   "etiqueta": "del 27 de diciembre de 2026 al 4 de enero de 2027",
+      }
+
+      77 |
+      78 |     it('cruzando de año explicita el año en ambos extremos', () => {
+    > 79 |       expect(rangoDeDias(f('2026-12-28'), f('2027-01-05'))).toEqual({
+         |                                                             ^
+      80 |         etiqueta: 'del 28 de diciembre de 2026 al 5 de enero de 2027',
+      81 |         dias: 9,
+      82 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:79:61)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Nombres de meses en español › 2026-01-10 → el 10 de enero
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 10 de enero"
+    Received: "el 9 de enero"
+
+      91 |       ['2026-11-10', 'el 10 de noviembre'],
+      92 |     ])('%s → %s', (iso, esperado) => {
+    > 93 |       expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+         |                                                    ^
+      94 |     });
+      95 |   });
+      96 |
+
+      at rango-de-dias.spec.ts:93:52
+
+  ● rangoDeDias — Suite Corregida y Blindada › Nombres de meses en español › 2026-04-10 → el 10 de abril
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 10 de abril"
+    Received: "el 9 de abril"
+
+      91 |       ['2026-11-10', 'el 10 de noviembre'],
+      92 |     ])('%s → %s', (iso, esperado) => {
+    > 93 |       expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+         |                                                    ^
+      94 |     });
+      95 |   });
+      96 |
+
+      at rango-de-dias.spec.ts:93:52
+
+  ● rangoDeDias — Suite Corregida y Blindada › Nombres de meses en español › 2026-07-10 → el 10 de julio
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 10 de julio"
+    Received: "el 9 de julio"
+
+      91 |       ['2026-11-10', 'el 10 de noviembre'],
+      92 |     ])('%s → %s', (iso, esperado) => {
+    > 93 |       expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+         |                                                    ^
+      94 |     });
+      95 |   });
+      96 |
+
+      at rango-de-dias.spec.ts:93:52
+
+  ● rangoDeDias — Suite Corregida y Blindada › Nombres de meses en español › 2026-11-10 → el 10 de noviembre
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "el 10 de noviembre"
+    Received: "el 9 de noviembre"
+
+      91 |       ['2026-11-10', 'el 10 de noviembre'],
+      92 |     ])('%s → %s', (iso, esperado) => {
+    > 93 |       expect(rangoDeDias(f(iso), f(iso)).etiqueta).toBe(esperado);
+         |                                                    ^
+      94 |     });
+      95 |   });
+      96 |
+
+      at rango-de-dias.spec.ts:93:52
+
+  ● rangoDeDias — Suite Corregida y Blindada › Flexibilidad de tipos (contrato Date | string) › acepta objetos Date nativos
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 6,
+    -   "etiqueta": "del 4 al 9 de mayo",
+    +   "etiqueta": "del 3 al 8 de mayo",
+      }
+
+      102 |           new Date('2026-05-09T00:00:00.000Z'),
+      103 |         ),
+    > 104 |       ).toEqual({
+          |         ^
+      105 |         etiqueta: 'del 4 al 9 de mayo',
+      106 |         dias: 6,
+      107 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:104:9)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Flexibilidad de tipos (contrato Date | string) › acepta cadenas ISO completas
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 6,
+    -   "etiqueta": "del 4 al 9 de mayo",
+    +   "etiqueta": "del 3 al 8 de mayo",
+      }
+
+      111 |       expect(
+      112 |         rangoDeDias('2026-05-04T00:00:00.000Z', '2026-05-09T00:00:00.000Z'),
+    > 113 |       ).toEqual({
+          |         ^
+      114 |         etiqueta: 'del 4 al 9 de mayo',
+      115 |         dias: 6,
+      116 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:113:9)
+
+  ● rangoDeDias — Suite Corregida y Blindada › Flexibilidad de tipos (contrato Date | string) › acepta fechas cortas YYYY-MM-DD sin hora
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "dias": 6,
+    -   "etiqueta": "del 4 al 9 de mayo",
+    +   "etiqueta": "del 3 al 8 de mayo",
+      }
+
+      118 |
+      119 |     it('acepta fechas cortas YYYY-MM-DD sin hora', () => {
+    > 120 |       expect(rangoDeDias('2026-05-04', '2026-05-09')).toEqual({
+          |                                                       ^
+      121 |         etiqueta: 'del 4 al 9 de mayo',
+      122 |         dias: 6,
+      123 |       });
+
+      at Object.<anonymous> (rango-de-dias.spec.ts:120:55)
+
+Test Suites: 1 failed, 1 total
+Tests:       16 failed, 2 passed, 18 total
+Snapshots:   0 total
+Time:        2.836 s, estimated 3 s
+Ran all test suites matching rango-de-dias.spec.ts.
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+
+-
+
+Se reintrodujo el bug y 16 de los 18 tests estallaron en rojo de inmediato.
+
+    Atrapó el retroceso al día anterior (17 → 16).
+
+    Atrapó el cambio de mes erróneo (1 de septiembre → 31 de agosto).
+
+    Atrapó el retroceso de año (1 de enero 2027 → 31 de diciembre 2026).
+
+    Atrapó los strings cortos YYYY-MM-DD.
+
+    Los únicos 2 tests que pasaron fueron las excepciones defensivas (Fecha inválida y Término anterior), lo cual es 100% correcto porque esas fallan antes de evaluar la fecha.
+la evidencia quedó grabada en evidencia/salida-bug-reintroducido.txt.
+
+
+Siguiente paso: Restaurar y asegurar en Git
+
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ git restore rango-de-dias.ts
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$ npx jest
+ PASS  ./bug-produccion.spec.ts
+ PASS  ./rango-de-dias.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        3.671 s
+Ran all test suites.
+note@bazzite:~/Documentos/prueba-tecnica-tooltips/resolucion$
+
+git add rango-de-dias.spec.ts evidencia/salida-bug-reintroducido.txt
+git commit -m "test: blindar la suite de tests y verificar captura de bugs con prueba de mutacion"
+
+
+Para el punto 6
+
+Anticipa. Con la suite que dejas, ¿qué error de esta función seguiría pasando desapercibido? Nómbralo. Una suite sin huecos no existe; una cuyos huecos nadie conoce, sí, y es peor.
+
+
+Objetos Date creados en horas nocturnas locales (desfase inverso):
+Si un consumidor externo instancia un objeto Date en horario local chileno tarde en la noche (por ejemplo, new Date(2026, 7, 17, 22, 0) a las 22:00 del 17 de agosto), en UTC ese timestamp se serializa a las 02:00 del día siguiente (2026-08-18T02:00:00.000Z). Como nuestra función extrae componentes con getUTCDate(), leerá el día 18 en vez del 17. La función asume que los objetos Date provienen normalizados a medianoche UTC (como hace MongoDB) o como cadenas ISO sin hora.
+
+Inconsistencia entre etiqueta y días si se pasan timestamps con horas dispares:
+Si se ingresa un desde a las 23:30 de un día y un hasta a las 00:30 del día siguiente (solo 1 hora de diferencia real), el cálculo (b - a) / UN_DIA da 0.041, que redondea a 0 + 1 = 1 día. Sin embargo, las fechas calendario cruzan dos días distintos (17 y 18), generando una etiqueta del tipo «del 17 al 18 de agosto» con dias: 1. Hay un desacople si las fechas traen horas arbitrarias.
+
+Formatos de fecha regionales no normalizados:
+Cadenas en formatos como '17/08/2026' o '17-08-2026' no son parseadas de forma determinista por el constructor nativo de Date en todos los motores de JavaScript, arrojando Fecha inválida o invirtiendo mes por día.
