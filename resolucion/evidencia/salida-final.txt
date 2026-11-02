@@ -1,0 +1,8 @@
+PASS ./bug-produccion.spec.ts
+PASS ./rango-de-dias.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       21 passed, 21 total
+Snapshots:   0 total
+Time:        3.826 s
+Ran all test suites.

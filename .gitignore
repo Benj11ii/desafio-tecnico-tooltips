@@ -1,2 +1,6 @@
 node_modules/
 file:///home/note/Documentos/prueba-tecnica-tooltips/resolucion/Documentacion para desarrollar desafio tooltips.txt
+*.kate-swp
+*.swp
+*~
+.DS_Store
