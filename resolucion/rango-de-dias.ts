@@ -22,36 +22,19 @@ export interface RangoDeDias {
   dias: number;
 }
 
-/** El día del mes, en la zona horaria de Chile. */
+/** El día del mes de la fecha calendario (UTC). */
 function diaDe(f: Date): number {
-  return Number(
-    f.toLocaleDateString('es-CL', {
-      timeZone: 'America/Santiago',
-      day: 'numeric',
-    }),
-  );
+  return f.getUTCDate();
 }
 
-/** El mes (0-11), en la zona horaria de Chile. */
+/** El mes (0-11) de la fecha calendario (UTC). */
 function mesDe(f: Date): number {
-  return (
-    Number(
-      f.toLocaleDateString('es-CL', {
-        timeZone: 'America/Santiago',
-        month: 'numeric',
-      }),
-    ) - 1
-  );
+  return f.getUTCMonth();
 }
 
-/** El año, en la zona horaria de Chile. */
+/** El año de la fecha calendario (UTC). */
 function anioDe(f: Date): number {
-  return Number(
-    f.toLocaleDateString('es-CL', {
-      timeZone: 'America/Santiago',
-      year: 'numeric',
-    }),
-  );
+  return f.getUTCFullYear();
 }
 
 export function rangoDeDias(desde: string | Date, hasta: string | Date): RangoDeDias {
